@@ -1,7 +1,7 @@
 module micro80(
 	input wire clk,
 	input wire rst,
-	//HDMI - использовать тип вывода LVDS_E3R
+	//HDMI (использовать тип выводов LVDS_E3R
 	output wire[2:0]tmds,
 	output wire tmdsc,
 	//SRAM
@@ -40,11 +40,12 @@ module micro80(
 wire[7:0]PFF;
 
 //Clocking
-wire CLK2_5,CLK5,CLK10,CLK20,CLK40,CLK400;
+wire CLK2_5,CLK5,CLK10,CLK20,CLK64,CLK320;
 
-main_pll mpl(.inclk0(clk),.c0(CLK20),.c1(CLK40),.c2(CLK400));
+//Для Xilinx необходимо сгенерировать свой блок PLL
+main_pll mpl(.inclk0(clk),.c0(CLK20),.c1(CLK64),.c2(CLK320));
 
-reg[28:0] div;
+reg[5:0] div;
 always@(posedge CLK20) div <= div + 1;
 
 assign CLK2_5 = div[2];
@@ -97,7 +98,7 @@ assign RM = (HLDA)? ~(DBIN & CCTRL[7]) : 1'bz;
 assign WM = (HLDA)?  ~(~CCTRL[4] & ~WO) : 1'bz; 
 
 //Video
-videocontroller mvc(.pixclk(CLK40),.hclk(CLK400),.rst(rst),.tmds(tmds),.tmdsc(tmdsc),
+videocontroller mvc(.pixclk(CLK64),.hclk(CLK320),.rst(rst),.tmds(tmds),.tmdsc(tmdsc),
 						  .ADD(CPU_ADD),.DIN(CPU_DO),.WR(WM),.color(color));
 
 //Monitor
@@ -128,7 +129,10 @@ wire[7:0]KPA;
 wire[6:0]KPB;
 wire[2:0]KPC;
 
-//keyboard mkb(.clk(CLK400),.rst(CRST),.clock(PS2_CLK),.dat(PS2_DAT),.PA(KPA), .PC(KPC),.PB(KPB));
+	//PS/2 клавиатура (работает нестабильно - залипают клавиши)
+//keyboard mkb(.clk(clk),.rst(CRST),.clock(PS2_CLK),.dat(PS2_DAT),.PA(KPA), .PC(KPC),.PB(KPB));
+
+//USB клавиатура через переходник на STM32F411CEU	
 keyboard_usb  mkbu(.rst(CRST),.MOSI(KB_MOSI),.SCK(KB_SCK),.CS(KB_CS),.LATCH(KB_LATCH),.PA(KPA),
 						 .PC(KPC),.PB(KPB),.LED(LED));
 
@@ -164,7 +168,7 @@ assign IORD = RIO;
 wire tx_start,tx_bsy;
 assign tx_start = (CPU_ADD[7:0] == 8'hE8)? ~IOWR : 1'b0;
 
-//UART Tx
+	//UART Tx (пока только Tx)
 uart_tx(.clk(clk),.rst(CRST),.start(tx_start),.DIN(CPU_DO),.tx(UART_TX),.bsy(tx_bsy));
 
 //Read IO
@@ -209,6 +213,5 @@ assign KPA = kpa;
 assign PFF = pff;
 					  
 endmodule
-
 
 
