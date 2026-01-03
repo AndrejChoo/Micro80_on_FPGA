@@ -1,7 +1,7 @@
 module micro80(
 	input wire clk,
 	input wire rst,
-	//HDMI
+	//HDMI - использовать тип вывода LVDS_E3R
 	output wire[2:0]tmds,
 	output wire tmdsc,
 	//SRAM
@@ -209,5 +209,6 @@ assign KPA = kpa;
 assign PFF = pff;
 					  
 endmodule
+
 
 
