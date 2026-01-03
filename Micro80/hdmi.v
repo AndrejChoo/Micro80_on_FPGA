@@ -1,6 +1,10 @@
+/*	Разрешение 1024x768х60Hz требует частоты пиксельклока 65Mhz и вывода сигналов линий tmds на частоте 650Mhz, 
+	но так как моя Altera Cyclone IV умеет только до 640Mhz (точнее до 640Mbit/s), то я уменьшил пиксельклок на 10 Mhz.
+	Мой 2К монитор без проблем переварил такие ухищрения.
+*/
 module hdmi(
-	input pixclk,  // 25MHz
-	input clk_TMDS, //x10 CLK 
+	input pixclk,  // 64MHz
+	input clk_TMDS, //x5 CLK 
 	input n_rst,
 	output [2:0] TMDSp, //TMDSn,
 	output TMDSp_clock,//, TMDSn_clock
@@ -124,4 +128,5 @@ wire [9:0] TMDS_code = CD[1] ? (CD[0] ? 10'b1010101011 : 10'b0101010100) : (CD[0
 always @(posedge clk) TMDS <= VDE ? TMDS_data : TMDS_code;
 always @(posedge clk) balance_acc <= VDE ? balance_acc_new : 4'h0;
 endmodule
+
 
