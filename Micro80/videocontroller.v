@@ -96,12 +96,10 @@ always@(negedge pixclk or negedge rst)
 							zad <= VR_DO;
 							tatr <= AR_DO;
 						end
-					/*
-					7:
+					7: //Курсор
 						begin
 							if(tatr[7]) zad <= 8'h5F;
 						end
-					*/
 					8: zclk <= 1'b1;
 					11: zclk <= 1'b0;
 					14: 
@@ -144,24 +142,13 @@ assign Rb = (color)? ((zd[(7-(NHCNT[3:1]))])? Ri : Rp) : 8'h00;
 assign Gb = (color)? ((zd[(7-(NHCNT[3:1]))])? Gi : Gp) : ((zd[(7-(NHCNT[3:1]))])? 8'hC0 : 8'h00);
 assign Bb = (color)? ((zd[(7-(NHCNT[3:1]))])? Bi : Bp) : ((zd[(7-(NHCNT[3:1]))])? 8'h0B : 8'h00);
 
-/*
-assign Rb = 8'h00;
-assign Gb = (zd[(7-(NHCNT[3:1]))])? 8'hC0 : 8'h00;
-assign Bb = (zd[(7-(NHCNT[3:1]))])? 8'h0B : 8'h00;
-*/
 
 //Запись
-
 assign VR_WREN = (ADD >= 16'hE800 && ADD < 16'hF000)? 1'b1 : 1'b0;
 assign VR_WCLK = WR | pixclk;	
 assign AR_WREN = (ADD >= 16'hE000 && ADD < 16'hE800)? 1'b1 : 1'b0;
 assign AR_WCLK = WR | pixclk;
-/*
-//I8080
-assign VR_WREN = (ADD >= 16'hE800 && ADD < 16'hF000)? 1'b1 : 1'b0;
-assign VR_WCLK = ~WR | pixclk;	
-assign AR_WREN = (ADD >= 16'hE000 && ADD < 16'hE800)? 1'b1 : 1'b0;
-assign AR_WCLK = ~WR | pixclk;
-*/
+
 endmodule
+
 
