@@ -10,30 +10,30 @@ module micro80(
 	output wire ER_CS,
 	output wire ER_OE,
 	output wire ER_WE,
-	output wire ER_BH,
+	output wire ER_BH, //BH,BL сигналы - это для SRAM 16bit, которые включают/отключают верхнюю/нижнюю половины шины данных
 	output wire ER_BL,
-	//PS/2
+	//PS/2 - К PS/2 клавиатуре
 	//input wire PS2_CLK,
 	//input wire PS2_DAT,
-	//USB_Keyboard
+	//USB_Keyboard - сигналы к адаптеру USB клавиатуры
 	input wire KB_MOSI,
 	input wire KB_SCK,
 	input wire KB_CS,
 	input wire KB_LATCH,
-	//SPI Flash
+	//SPI Flash - сигналы к SPI Flash 25серии (не к той, где хранится прошивка FPGA, а к отдельной, в которую надо прошит ROM)
 	output wire SPI_CS,
 	output wire MOSI,
 	output wire SCK,
 	input wire MISO,
 	//CP/M
-	input wire mode,
-	input wire color,
+	input wire mode, // Переключатель GND/3v3: выбор режима Монитор/CP/M
+	input wire color, // Переключатель GND/3v3: выбор режима изображения цвет/монохром
 	//UART
 	output wire UART_TX,
 	input wire UART_RX,
 	//Debug
 	output wire LED,
-	input wire HOLD
+	input wire HOLD //Кнопка с подтяжкой к питанию
 );
 
 //CPM
@@ -213,5 +213,6 @@ assign KPA = kpa;
 assign PFF = pff;
 					  
 endmodule
+
 
 
