@@ -24,7 +24,8 @@ hdmi mhd(.pixclk(pixclk),.clk_TMDS(hclk),.n_rst(rst),.TMDSp(tmds),.TMDSp_clock(t
 wire[10:0]VR_RADD;
 wire[7:0]VR_DO;
 wire VR_RCLK,VR_WCLK,VR_WREN;	
-	
+
+//Для Xilinx необходимо сгенерировать свой модуль блочной 2-Port RAM
 vram mvr(.data(DIN),.q(VR_DO),.wren(VR_WREN),.rdaddress(VR_RADD),.wraddress(ADD[10:0]),
 			.rdclock(VR_RCLK),.wrclock(VR_WCLK));
 	
@@ -38,7 +39,8 @@ vram avr(.data(DIN),.q(AR_DO),.wren(AR_WREN),.rdaddress(AR_RADD),.wraddress(ADD[
 wire[11:0]ZR_ADD;
 wire[7:0]ZR_DAT;
 wire ZR_CLK;
-			
+
+//Для Xilinx необходимо сгенерировать свой модуль блочной 1-Port ROM
 zrom zng(.address(ZR_ADD),.q(ZR_DAT),.clock(ZR_CLK));
 			
 //----------------------------Resolution 768x512 with scandoubler-----------------------------
@@ -162,3 +164,4 @@ assign AR_WREN = (ADD >= 16'hE000 && ADD < 16'hE800)? 1'b1 : 1'b0;
 assign AR_WCLK = ~WR | pixclk;
 */
 endmodule
+
