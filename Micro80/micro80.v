@@ -45,8 +45,8 @@ module micro80(
 	output wire UART_TX,
 	input wire UART_RX,
 	//Debug
-	output wire[7:0]SEG,
-	output wire[7:0]RAZR,
+	//output wire[7:0]SEG,
+	//output wire[7:0]RAZR,
 	output wire LED,
 	input wire HOLD
 );
@@ -261,6 +261,8 @@ assign PFF = pff;
 
 assign LED = CRST;
 
+/*
+//Debug
 din7seg md7s(
 .clk(clk),
 .I0(CPU_ADD[3:0]),
@@ -274,11 +276,11 @@ din7seg md7s(
 .SEG(SEG),
 .RAZR(RAZR)
 );
-
+*/
 
 endmodule
 
-
+/*
 module din7seg 
 #(
  parameter razr_val = 8, //Количество разрядов  от 2 до 9 
@@ -367,3 +369,4 @@ reg clock;
  
 endmodule
 
+*/
