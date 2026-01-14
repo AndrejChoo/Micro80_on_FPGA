@@ -10,7 +10,8 @@ module programmer(
 	//SRAM
 	output wire[18:0] SRAMADD,
 	output wire[7:0] SRAMDO,
-	output wire SRAMWE
+	output wire SRAMWE,
+	input wire DEV_RDY
 );
 
 parameter COUNT = 131072; //Количество записываемых байт памяти
@@ -53,9 +54,12 @@ always@(posedge clk or negedge rst)
 				case(spi_state)
 					0: //Begin
 						begin
-							prst <= 1;
-							spi_cs <= 0;
-							spi_state <= 1;
+							if(DEV_RDY)
+								begin
+									prst <= 1;
+									spi_cs <= 0;
+									spi_state <= 1;
+								end
 						end
 					1: //Start
 						begin 
@@ -91,12 +95,12 @@ always@(posedge clk or negedge rst)
 					6: //Запись байта в SRAM 
 						begin 
 							rwr <= 1;
-							wr_del <= 7;
+							//wr_del <= 7;
 							spi_state <= 7;
 						end	
 					7: 
 						begin 
-							if(wr_del == 0)
+							if(DEV_RDY == 0)
 								begin
 									rwr <= 0;
 									spi_state <= 8;
@@ -111,7 +115,11 @@ always@(posedge clk or negedge rst)
 					9: 
 						begin 
 							if(spi_cnt >= COUNT) spi_state <= 10;
-							else spi_state <= 5;
+							else 
+								begin
+									if(DEV_RDY) spi_state <= 5;
+									else spi_state <= 9;
+								end
 						end				
 					10: //IDDLE 
 						begin 
