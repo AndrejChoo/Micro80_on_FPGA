@@ -1,3 +1,8 @@
+
+//`define SDRAM
+`define SRAM
+
+
 module programmer(
 	input wire clk,
 	input wire rst,
@@ -10,8 +15,11 @@ module programmer(
 	//SRAM
 	output wire[18:0] SRAMADD,
 	output wire[7:0] SRAMDO,
-	output wire SRAMWE,
-	input wire DEV_RDY
+`ifdef SDRAM
+	input wire DEV_RDY,
+`endif	
+	output wire SRAMWE//
+
 );
 
 parameter COUNT = 131072; //Количество записываемых байт памяти
@@ -30,7 +38,7 @@ reg spi_start;
 reg[7:0] spi_rd, spi_wr;
 reg[18:0] spi_cnt;
 reg[5:0] spi_state,spi_return;
-reg[2:0] wr_del;
+reg[3:0] wr_del;
 
 always@(posedge clk or negedge rst)
 	begin
@@ -51,7 +59,77 @@ always@(posedge clk or negedge rst)
 			begin
 				if(wr_del > 0) wr_del <= wr_del - 1;
 			
-				case(spi_state)
+				case(spi_state)				
+`ifdef SRAM				
+					0: //Begin
+						begin
+							prst <= 1;
+							spi_cs <= 0;
+							spi_state <= 1;
+						end	
+					1: //Start
+						begin 
+							spi_cs <= 1;
+							spi_wr <= 8'h03;
+							spi_return <= 2;
+							spi_state <= 12; //Процедура записи байта в SPI
+						end										
+					2: 
+						begin 
+							spi_wr <= 8'h00;
+							spi_return <= 3;
+							spi_state <= 12;
+						end
+					3: 
+						begin 
+							spi_wr <= 8'h00;
+							spi_return <= 4;
+							spi_state <= 12;
+						end
+					4: 
+						begin 
+							spi_wr <= 8'h00;
+							spi_return <= 5;
+							spi_state <= 12;
+						end
+					5: 
+						begin 
+							spi_wr <= 8'hFF;
+							spi_return <= 6;
+							spi_state <= 12;
+						end
+					6: //Запись байта в SRAM 
+						begin 
+							rwr <= 1;
+							wr_del <= 7;
+							spi_state <= 7;
+						end	
+					7: 
+						begin 
+							if(wr_del == 0)
+								begin
+									rwr <= 0;
+									spi_state <= 8;
+									wr_del <= 5;
+								end
+							else spi_state <= 7;
+						end
+					8: 
+						begin 
+						    if(wr_del == 0)
+						         begin
+							         spi_cnt <= spi_cnt + 1;
+							         spi_state <= 9;
+							     end
+							else spi_state <= 8;
+						end					
+					9: 
+						begin 
+							if(spi_cnt >= COUNT) spi_state <= 10;
+							else spi_state <= 5;
+						end	
+`endif
+`ifdef SDRAM
 					0: //Begin
 						begin
 							if(DEV_RDY)
@@ -121,6 +199,7 @@ always@(posedge clk or negedge rst)
 									else spi_state <= 9;
 								end
 						end				
+`endif			
 					10: //IDDLE 
 						begin 
 							prst <= 0;
