@@ -1,19 +1,16 @@
+//`define SDRAM
+`define SRAM
+//`define DEBUG
+
 module micro80(
 	input wire clk,
 	input wire rst,
+	input wire HOLD,
 	//HDMI
 	output wire[2:0]tmds,
 	output wire tmdsc,
-	/*
-	//SRAM
-	output wire[18:0]ER_ADD,
-	inout wire[7:0]ER_D,
-	output wire ER_CS,
-	output wire ER_OE,
-	output wire ER_WE,
-	output wire ER_BH,
-	output wire ER_BL,
-	*/
+
+`ifdef SDRAM
 	//SDRAM
 	output wire SDRAM_CLK,
 	output wire SDRAM_CKE,
@@ -25,9 +22,22 @@ module micro80(
 	output wire[1:0] SDRAM_BS,
 	output wire[12:0] SDRAM_ADD,
 	inout wire[15:0] SDRAM_DQ,
+`endif
+`ifdef SRAM
+	//SRAM
+	output wire[18:0]ER_ADD,
+	inout wire[7:0]ER_D,
+	output wire ER_CS,
+	output wire ER_OE,
+	output wire ER_WE,
+	output wire ER_BH,
+	output wire ER_BL,
+`endif
+	/*
 	//PS/2
 	//input wire PS2_CLK,
 	//input wire PS2_DAT,
+	*/
 	//USB_Keyboard
 	input wire KB_MOSI,
 	input wire KB_SCK,
@@ -41,14 +51,15 @@ module micro80(
 	//CP/M
 	input wire mode,
 	input wire color,
+`ifdef DEBUG
+	//Debug
+	output wire[7:0]SEG,
+	output wire[7:0]RAZR,
+	output wire LED,	
+`endif
 	//UART
 	output wire UART_TX,
-	input wire UART_RX,
-	//Debug
-	//output wire[7:0]SEG,
-	//output wire[7:0]RAZR,
-	output wire LED,
-	input wire HOLD
+	input wire UART_RX
 );
 
 //CPM
@@ -109,7 +120,7 @@ assign CCTRL = i8080ctrl;
 assign RIO = ~(DBIN & CCTRL[6]);
 assign WIO = ~(CCTRL[4] & ~WO); 
 assign RM = ~(DBIN & CCTRL[7]);
-assign WM = ~(~CCTRL[4] & ~WO); 
+assign WM = ~(~CCTRL[4] & ~WO);
 
 //Video
 videocontroller mvc(.pixclk(CLK64),.hclk(CLK320),.rst(rst),.tmds(tmds),.tmdsc(tmdsc),
@@ -129,6 +140,7 @@ always@(posedge CPU_ADD[11] or negedge CRST)
 	
 assign MON_SEL = (CPU_ADD >= 16'hF800)? 1'b1 : 1'b0;
 
+`ifdef SDRAM
 //SDRAM
 wire SDRAM_WR,SDRAM_RD,SDRAM_RDY,SDRAM_WAIT;
 wire[23:0]SDRAM_A;
@@ -156,14 +168,33 @@ sdram msdram(
 	.SDRAM_ADD(SDRAM_ADD),
 	.SDRAM_DQ(SDRAM_DQ)
 );
+`endif
 
 //Programmer
 wire PROG,PROGWE;
 wire[18:0]PROGADD;
 wire[7:0]PROGDO;
 
-programmer mpg(.clk(clk),.rst(rst & SDRAM_WAIT),.PROG(PROG),.SRAMADD(PROGADD),.SRAMDO(PROGDO),.SRAMWE(PROGWE),
-					.SPI_CS(SPI_CS),.SPI_MOSI(MOSI),.SPI_MISO(MISO),.SPI_SCK(SCK),.DEV_RDY(SDRAM_RDY));
+programmer mpg(
+    .clk(clk),
+`ifdef SDRAM		 
+    .rst(rst & SDRAM_WAIT),
+`endif	
+`ifdef SRAM		 
+    .rst(rst),
+`endif	 
+    .PROG(PROG),
+    .SRAMADD(PROGADD),
+    .SRAMDO(PROGDO),
+    .SRAMWE(PROGWE),
+	.SPI_CS(SPI_CS),
+	.SPI_MOSI(MOSI),
+	.SPI_MISO(MISO),
+`ifdef SDRAM	
+	.DEV_RDY(SDRAM_RDY),
+`endif
+	.SPI_SCK(SCK)
+	);
 
 //Keyboard
 wire[7:0]KPA;
@@ -176,7 +207,7 @@ keyboard_usb  mkbu(.rst(CRST),.MOSI(KB_MOSI),.SCK(KB_SCK),.CS(KB_CS),.LATCH(KB_L
 
 
 //SRAM
-//wire[7:0] ER_DI;
+wire[7:0] ER_DI;
 wire RAM_WE,MON_WE,CPM_WE;
 
 assign MON_ADD = (start)? {3'b000,CPU_ADD[15:0]} : {8'b00011111,CPU_ADD[10:0]}; //
@@ -185,22 +216,24 @@ assign MON_WE = (CPU_ADD > 16'hF800)? 1'b1 : WM;
 assign CPM_WE = (PFF[5:2] == 4'b0000 && CPU_ADD[15] == 0)? 1'b1 : WM;
 assign RAM_WE = (mode)? CPM_WE : MON_WE;
 
+`ifdef SDRAM	
 assign SDRAM_A[23:0] = (PROG)? {5'b00000,PROGADD[18:0]} : ((mode)? {5'b00000,CPM_ADD} : {5'b00000,MON_ADD});
 assign SDRAM_DI[15:0] = (PROG)? {8'hFF,PROGDO} : {8'hFF,CPU_DO};
 assign SDRAM_WR = (PROG)? PROGWE : RAM_WE;
 assign SDRAM_RD = (PROG)? 1'b1 : RM;
+`endif
 
-/*
+`ifdef SRAM	
 assign ER_ADD[18:0] = (PROG)? PROGADD[18:0] : ((mode)? CPM_ADD : MON_ADD);
 assign ER_D = (ER_WE == 0)? ER_DI : 8'bzzzzzzzz;
 assign ER_DI = (PROG)? PROGDO : CPU_DO;
 assign ER_WE = (PROG)? PROGWE : RAM_WE;
-assign ER_OE = (PROG)? 1'b1 : 1'b0;
+assign ER_OE = (PROG)? 1'b1 : RM;
 assign ER_CS = (PROG)? 1'b0 : (RM & WM);
 
 assign ER_BH = 1'b1;
 assign ER_BL = 1'b0;
-*/
+`endif
 
 //IO
 reg[7:0]dio;
@@ -228,8 +261,14 @@ always@(negedge IORD)
 	end
 
 assign IO_DO = dio;
-//assign CPU_DI = (~RM)? ER_D : ((~RIO)? IO_DO : 8'h00);
-assign CPU_DI = (~RM)? SDRAM_DO[7:0] : ((~RIO)? IO_DO : 8'h00);
+
+`ifdef SRAM
+	assign CPU_DI = (RM==0)? ER_D : ((RIO==0)? IO_DO : 8'h00);
+`endif
+
+`ifdef SDRAM
+	assign CPU_DI = (~RM)? SDRAM_DO[7:0] : ((~RIO)? IO_DO : 8'h00);
+`endif
 
 //Write IO
 reg[7:0]kpa = 8'hFF; //Порт линии сканирования клавиатуры
@@ -258,28 +297,33 @@ always@(negedge IOWR or negedge CRST)
 assign KPA = kpa;
 assign PFF = pff;
 
+`ifdef DEBUG
 assign LED = CRST;
 
-/*
-//Debug
 din7seg md7s(
 .clk(clk),
 .I0(CPU_ADD[3:0]),
 .I1(CPU_ADD[7:4]),
 .I2(CPU_ADD[11:8]),
 .I3(CPU_ADD[15:12]),
-.I4(SDRAM_DO[3:0]),
-.I5(SDRAM_DO[7:4]),
+`ifdef SRAM
+	.I4(ER_D[3:0]),
+	.I5(ER_D[7:4]),
+`endif
+`ifdef SDRAM
+	.I4(SDRAM_DO[3:0]),
+	.I5(SDRAM_DO[7:4]),
+`endif
 .I6(CPU_DO[3:0]),
 .I7(CPU_DO[7:4]),
 .SEG(SEG),
 .RAZR(RAZR)
 );
-*/
+`endif
 
 endmodule
 
-/*
+
 module din7seg 
 #(
  parameter razr_val = 8, //Количество разрядов  от 2 до 9 
@@ -367,6 +411,4 @@ reg clock;
   end
  
 endmodule
-
-*/
 
