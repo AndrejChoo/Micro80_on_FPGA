@@ -76,8 +76,10 @@ wire RM,WM,RIO,WIO,DBIN,WO,HLDA,SYNC,F1,F2;
 
 assign CRST = (rst & HOLD & ~PROG);
 assign CPU_CLK = div[2];
-assign F1 = CPU_CLK;
-assign F2 = ~CPU_CLK;
+//assign F1 = CPU_CLK;
+//assign F2 = ~CPU_CLK;
+assign F1 = div[2] & div[1];
+assign F2 = ~div[2];
 
 vm80a_core mcp
 (
@@ -100,17 +102,14 @@ vm80a_core mcp
 reg[7:0]i8080ctrl;
 wire[7:0]CCTRL;
 
-always@(posedge clk)
-	begin
-		if(F2 == 0 && SYNC == 1) i8080ctrl[7:0] <= CPU_DO[7:0];
-	end
+always@(negedge F1) if(SYNC == 1) i8080ctrl[7:0] <= CPU_DO[7:0];
+	
+assign CCTRL = i8080ctrl;
 
-assign CCTRL = (HLDA == 0)? i8080ctrl : 8'b11111111;
-
-assign RIO = (HLDA)? ~(DBIN & CCTRL[6]) : 1'bz;
-assign WIO = (HLDA)? ~(CCTRL[4] & ~WO) : 1'bz; 
-assign RM = (HLDA)? ~(DBIN & CCTRL[7]) : 1'bz;
-assign WM = (HLDA)?  ~(~CCTRL[4] & ~WO) : 1'bz; 
+assign RIO = ~(DBIN & CCTRL[6]);
+assign WIO = ~(CCTRL[4] & ~WO); 
+assign RM = ~(DBIN & CCTRL[7]);
+assign WM = ~(~CCTRL[4] & ~WO); 
 
 //Video
 videocontroller mvc(.pixclk(CLK64),.hclk(CLK320),.rst(rst),.tmds(tmds),.tmdsc(tmdsc),
@@ -370,3 +369,4 @@ reg clock;
 endmodule
 
 */
+
