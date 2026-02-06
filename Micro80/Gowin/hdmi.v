@@ -9,37 +9,38 @@ module hdmi(
 	input wire [7:0] red,
 	input wire [7:0] blue,
 	input wire [7:0] green,
-	output wire[9:0]HCNT,
-	output wire[9:0]VCNT,
+	output wire[10:0]HCNT,
+	output wire[10:0]VCNT,
 	output wire visible,
 	output wire vs
 );
 
 ////////////////////////////////////////////////////////////////////////
-reg [9:0] CounterX, CounterY;
+////////////////////////////////////////////////////////////////////////
+reg [10:0] CounterX, CounterY;
 reg hSync, vSync, DrawArea;
 always @(posedge pixclk or negedge n_rst) 
 	begin
 		if(!n_rst) DrawArea <= 0;
-		else DrawArea <= (CounterX<640) && (CounterY<480);
+		else DrawArea <= (CounterX>159) && (CounterX<1184) && (CounterY>28) && (CounterY<797);
 	end
 
 always @(posedge pixclk or negedge n_rst) 
 	begin
 		if(!n_rst) CounterX <= 0;
-		else CounterX <= (CounterX==799) ? 0 : CounterX+1;
+		else CounterX <= (CounterX==1343) ? 0 : CounterX+1;
 	end
 always @(posedge pixclk or negedge n_rst) 
 	begin
 		if(!n_rst) CounterY <= 0;
 		else 
 			begin
-				if(CounterX==799) CounterY <= (CounterY==524) ? 0 : CounterY+1;
+				if(CounterX==1343) CounterY <= (CounterY==805) ? 0 : CounterY+1;
 			end
 	end
 
-always @(posedge pixclk) hSync <= (CounterX>=656) && (CounterX<752);
-always @(posedge pixclk) vSync <= (CounterY>=490) && (CounterY<492);
+always @(posedge pixclk) hSync <= (CounterX>=1208);
+always @(posedge pixclk) vSync <= (CounterY>=800);
 
 assign vs = vSync;
 assign visible = DrawArea;
@@ -62,6 +63,46 @@ BUFG BUFG_TMDSp(.I(DCM_TMDS_CLKFX), .O(clk_TMDS));
 assign DCM_TMDS_CLKFX = clk_TMDS;
 
 ////////////////////////////////////////////////////////////////////////
+
+reg [2:0] TMDS_mod5=0;  // modulus 10 counter
+reg [4:0] TMDSp_shift_red=0, TMDSp_shift_green=0, TMDSp_shift_blue=0;
+reg [4:0] TMDSn_shift_red=0, TMDSn_shift_green=0, TMDSn_shift_blue=0;
+reg TMDS_shift_load=0;
+
+always @(posedge clk_TMDS) TMDS_shift_load <= (TMDS_mod5==4'd4);
+
+always @(posedge clk_TMDS)
+begin
+	TMDSp_shift_red   <= TMDS_shift_load ? {TMDS_red[8],TMDS_red[6],TMDS_red[4],TMDS_red[2],TMDS_red[0]} : TMDSp_shift_red [4:1];
+	TMDSn_shift_red   <= TMDS_shift_load ? {TMDS_red[9],TMDS_red[7],TMDS_red[5],TMDS_red[3],TMDS_red[1]} : TMDSn_shift_red [4:1];
+	TMDSp_shift_green   <= TMDS_shift_load ? {TMDS_green[8],TMDS_green[6],TMDS_green[4],TMDS_green[2],TMDS_green[0]} : TMDSp_shift_green [4:1];
+	TMDSn_shift_green   <= TMDS_shift_load ? {TMDS_green[9],TMDS_green[7],TMDS_green[5],TMDS_green[3],TMDS_green[1]} : TMDSn_shift_green [4:1];
+	TMDSp_shift_blue   <= TMDS_shift_load ? {TMDS_blue[8],TMDS_blue[6],TMDS_blue[4],TMDS_blue[2],TMDS_blue[0]} : TMDSp_shift_blue [4:1];
+	TMDSn_shift_blue   <= TMDS_shift_load ? {TMDS_blue[9],TMDS_blue[7],TMDS_blue[5],TMDS_blue[3],TMDS_blue[1]} : TMDSn_shift_blue [4:1];	
+	TMDS_mod5 <= (TMDS_mod5==3'd4) ? 3'd0 : TMDS_mod5+3'd1;
+end
+
+wire tmd2,tmd1,tmd0;
+
+DDIO adr(
+	.din({TMDSn_shift_red[0],TMDSp_shift_red[0]}),
+	.clk(clk_TMDS),
+	.q(tmd2)
+	);
+	
+DDIO adg(
+	.din({TMDSn_shift_green[0],TMDSp_shift_green[0]}),
+	.clk(clk_TMDS),
+	.q(tmd1)
+	);
+	
+DDIO adb(
+	.din({TMDSn_shift_blue[0],TMDSp_shift_blue[0]}),
+	.clk(clk_TMDS),
+	.q(tmd0)
+	);
+
+/*
 reg [3:0] TMDS_mod10=0;  // modulus 10 counter
 reg [9:0] TMDS_shift_red=0, TMDS_shift_green=0, TMDS_shift_blue=0;
 reg TMDS_shift_load=0;
@@ -74,24 +115,37 @@ begin
 	TMDS_shift_blue  <= TMDS_shift_load ? TMDS_blue  : TMDS_shift_blue [9:1];	
 	TMDS_mod10 <= (TMDS_mod10==4'd9) ? 4'd0 : TMDS_mod10+4'd1;
 end
-
-/*
-OBUFDS OBUFDS_red  (.I(TMDS_shift_red  [0]), .O(TMDSp[2]), .OB(TMDSn[2]));
-OBUFDS OBUFDS_green(.I(TMDS_shift_green[0]), .O(TMDSp[1]), .OB(TMDSn[1]));
-OBUFDS OBUFDS_blue (.I(TMDS_shift_blue [0]), .O(TMDSp[0]), .OB(TMDSn[0]));
-OBUFDS OBUFDS_clock(.I(pixclk), .O(TMDSp_clock), .OB(TMDSn_clock));
 */
 
-assign TMDSp[2] = TMDS_shift_red  [0];
-assign TMDSp[1] = TMDS_shift_green  [0];
-assign TMDSp[0] = TMDS_shift_blue  [0];
-assign TMDSp_clock = pixclk;
+ELVDS_OBUF lobr(
+    .I(tmd2),
+    .O(TMDSp[2]),
+    .OB(TMDSn[2])
+);
 
-assign TMDSn[2] = ~TMDS_shift_red  [0];
-assign TMDSn[1] = ~TMDS_shift_green  [0];
-assign TMDSn[0] = ~TMDS_shift_blue  [0];
-assign TMDSn_clock = ~pixclk;
+ELVDS_OBUF lobg(
+    .I(tmd1),
+    .O(TMDSp[1]),
+    .OB(TMDSn[1])
+);
 
+ELVDS_OBUF lobb(
+    .I(tmd0),
+    .O(TMDSp[0]),
+    .OB(TMDSn[0])
+);
+
+ELVDS_OBUF lobc(
+    .I(pixclk),
+    .O(TMDSp_clock),
+    .OB(TMDSn_clock)
+);
+
+//assign TMDSp_clock = pixclk;
+//assign TMDSn_clock = ~pixclk;
+//assign TMDSn[2] = ~TMDSp[2];
+//assign TMDSn[1] = ~TMDSp[1];
+//assign TMDSn[0] = ~TMDSp[0];
 
 endmodule
 

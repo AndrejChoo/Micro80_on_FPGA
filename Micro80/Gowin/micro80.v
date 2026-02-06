@@ -43,12 +43,15 @@ assign mode = 1;
 assign color = 1;
 
 //Clocking
-wire CLK25,CLK250;
+wire CLK64,CLK320;
 
-main_pll mpl(.clkin(clk),.clkout(CLK250),.clkoutd(CLK25));
+main_pll mpl(.clkin(clk),.clkout(CLK320));//,.clkoutd(CLK25));
+dop_pll dpl(.clkout(CLK64),.clkin(clk));
+
 
 reg[22:0] div;
 always@(posedge clk) div <= div + 1;
+
 
 //CPU
 wire[15:0]CPU_ADD;
@@ -94,8 +97,8 @@ assign WM = ~(~CCTRL[4] & ~WO);
 
 //Video
 videocontroller mvc(
-    .pixclk(CLK25),
-    .hclk(CLK250),
+    .pixclk(CLK64),
+    .hclk(CLK320),
     .rst(rst),
     .tmdsp(tmdsp),
     .tmdsn(tmdsn),
